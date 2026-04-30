@@ -1,11 +1,11 @@
 import Airport from "../models/Airport.js";
 import { buildPath, readCSV } from "../utils/csv.js";
 
-const filePath = buildPath(import.meta.url, "./airports_clean.csv");
+const filePath = buildPath(import.meta.url, "../dataMock/airports_clean.csv");
 
 export function mapAirport(a) {
   return {
-    _id: a.id,
+    _id: a.ident,
     name: a.name,
     location: {
       lat: Number(a.lat),
@@ -29,7 +29,6 @@ export async function importAirports() {
   const raw = await readCSV(filePath);
 
   const mapped = raw.map(mapAirport).filter(Boolean);
-  console.log(raw, mapped);
 
   await insertAirports(mapped);
 }

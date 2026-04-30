@@ -5,6 +5,7 @@ const airportSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  ident: String,
   name: String,
   location: {
     lat: Number,

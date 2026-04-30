@@ -3,52 +3,39 @@ import csv from "csv-parser";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
+export const INITIAL_PATH = import.meta.url;
+
 export function buildPath(metaUrl, relativePath) {
   const __filename = fileURLToPath(metaUrl);
   const __dirname = dirname(__filename);
   return join(__dirname, relativePath);
 }
 
-export async function createCSVWithOnlyLargeAirports() {
-  const results = await readCSV(buildPath(import.meta.url, "../../airports.csv"), true);
-  createCSVWithAirports(results);
-}
-
-export function createCSVWithAirports(results) {
+function buildDataToSaveOnFile(results) {
   const headers = ["id", "ident", "name", "lat", "lon", "country", "municipality"];
 
   const lines = results.map(a =>
-    [
-      a.id,
-      a.ident,
-      a.name,
-      a.latitude_deg,
-      a.longitude_deg,
-      a.iso_country,
-      a.municipality,
-    ].join(",")
+    [a.airportId, a.code, a.name, a.lat, a.lon, a.country, a.city].join(",")
   );
 
   const csvContent = [headers.join(","), ...lines].join("\n");
 
-  fs.writeFileSync("airports_clean.csv", csvContent);
+  fs.writeFileSync(buildPath(INITIAL_PATH, "../dataMock/airports_clean.csv"), csvContent);
 }
 
-export function readCSV(csvFile, findOnlyLargeAirports = false) {
+export async function createCSVWithOnlyLargeAirports() {
+  const results = await readCSV(buildPath(INITIAL_PATH, "../../airports.dat"));
+  buildDataToSaveOnFile(results.slice(0, 1000));
+}
+
+export function readCSV(csvFile) {
   return new Promise((resolve, reject) => {
     const results = [];
 
     fs.createReadStream(csvFile)
       .pipe(csv())
       .on("data", row => {
-        if (!findOnlyLargeAirports) {
-          results.push(row);
-          return;
-        }
-
-        if (row.type === "large_airport") {
-          results.push(row);
-        }
+        results.push(row);
       })
       .on("end", () => resolve(results))
       .on("error", reject);
