@@ -4,16 +4,17 @@ import { haversine } from "../utils/haversine.js";
 let routes = null;
 
 export async function createRoutes(airports) {
+  console.log("Creando rutas!!!");
+
+  const routeMap = new Map();
   const allRoutes = await readCSV(buildPath(INITIAL_PATH, "../../routes.dat"));
 
   const airportMap = new Map();
   airports.forEach(ap => airportMap.set(ap._id, ap));
 
-  const airportsTags = new Set(airports.map(ap => ap._id));
-
   routes = allRoutes
     .filter(
-      fly => fly.from && fly.to && airportsTags.has(fly.from) && airportsTags.has(fly.to)
+      fly => fly.from && fly.to && airportMap.has(fly.from) && airportMap.has(fly.to)
     )
     .map(fly => {
       const fromAirport = airportMap.get(fly.from);
@@ -37,7 +38,16 @@ export async function createRoutes(airports) {
         price,
       };
     })
-    .filter(Boolean);
+    .filter(route => {
+      const key = `${route.from}-${route.to}`;
+
+      if (!routeMap.has(key)) {
+        routeMap.set(key, route);
+        return true;
+      }
+
+      return false;
+    });
 
   console.log("Routes generadas:", routes.length);
 }
