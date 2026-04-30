@@ -21,14 +21,12 @@ async function startServer() {
 
   console.time("buildRoutes");
   await createRoutes(airports);
-  console.timeEnd("buildGraph");
+  console.timeEnd("buildRoutes");
   const routes = getRoutes();
 
   console.time("buildGraph");
-  const graph = buildGraph(routes, airports);
+  buildGraph(routes, airports);
   console.timeEnd("buildGraph");
-
-  console.log(graph);
 
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
