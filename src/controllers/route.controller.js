@@ -1,5 +1,6 @@
 import { findRoutes } from "../algorithms/dfs.js";
-import { getGraph } from "../service/graph.js";
+import { getGraph, getAirportMap } from "../service/graph.js";
+import { enrichRoutes } from "../utils/enrichRoutes.js";
 
 export function getRoutes(req, res) {
   const { from, to, budget, maxStops } = req.query;
@@ -9,12 +10,14 @@ export function getRoutes(req, res) {
   }
 
   const graph = getGraph();
+  const airportMap = getAirportMap();
 
-  const results = findRoutes(graph, from, to, {
+  const routes = findRoutes(graph, from, to, airportMap, {
     budget: budget ? Number(budget) : Infinity,
     maxStops: maxStops ? Number(maxStops) : 4,
   });
-  console.log(graph);
 
-  res.json(results);
+  const enriched = enrichRoutes(routes, airportMap);
+
+  res.json(enriched);
 }

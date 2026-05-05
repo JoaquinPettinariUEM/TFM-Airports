@@ -60,7 +60,7 @@ function calculatePrice(distance) {
   const baseFare = 30;
   const costPerKm = 0.12;
 
-  const randomFactor = 0.8 + Math.random() * 0.4; // 0.8 → 1.2
+  const randomFactor = 0.8 + Math.random() * 0.4;
 
   return Math.round((baseFare + distance * costPerKm) * randomFactor);
 }

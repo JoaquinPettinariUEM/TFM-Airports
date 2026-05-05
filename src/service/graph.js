@@ -1,7 +1,16 @@
 const graph = {};
+const airportMap = {};
 
 export function buildGraph(routes, airports) {
   airports.forEach(ap => {
+    airportMap[ap._id] = {
+      _id: ap._id,
+      name: ap.name,
+      city: ap.city,
+      country: ap.country,
+      location: ap.location,
+    };
+
     graph[ap._id] = [];
   });
 
@@ -20,6 +29,6 @@ export function buildGraph(routes, airports) {
   return graph;
 }
 
-export const getGraph = () => {
-  return graph;
-};
+export const getGraph = () => graph;
+
+export const getAirportMap = () => airportMap;
