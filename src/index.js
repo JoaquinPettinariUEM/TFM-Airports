@@ -5,8 +5,8 @@ import connectDB from "./config/db.js";
 import { createCSVWithOnlyLargeAirports } from "./utils/csv.js";
 import Airport from "./models/Airport.js";
 import { importAirports } from "./scripts/importAirports.js";
-import { createRoutes, getRoutes } from "./service/routes.js";
-import { buildGraph } from "./service/graph.js";
+import { createRoutes, getRoutes } from "./services/routes.js";
+import { buildGraph } from "./services/graph.js";
 
 const PORT = process.env.PORT || 3000;
 

@@ -1,5 +1,5 @@
 import { findRoutes } from "../algorithms/dfs.js";
-import { getGraph, getAirportMap } from "../service/graph.js";
+import { getGraph, getAirportMap } from "../services/graph.js";
 import { enrichRoutes } from "../utils/enrichRoutes.js";
 
 export function getRoutes(req, res) {
