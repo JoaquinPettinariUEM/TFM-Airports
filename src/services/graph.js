@@ -15,14 +15,15 @@ export function buildGraph(routes, airports) {
   });
 
   routes.forEach(route => {
-    const { from, to, distance, price } = route;
+    const { from, to, distance, basePrice, schedules } = route;
 
     if (!graph[from]) graph[from] = [];
 
     graph[from].push({
       to,
       distance,
-      price,
+      basePrice,
+      schedules,
     });
   });
 
