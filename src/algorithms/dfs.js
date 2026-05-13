@@ -6,7 +6,7 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
   const config = {
     budget: Infinity,
     maxStops: 4,
-    maxResults: 20,
+    maxResults: 10,
 
     startDay: "monday",
     startTime: "08:00",
