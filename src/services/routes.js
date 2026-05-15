@@ -1,17 +1,9 @@
 import { buildPath, INITIAL_PATH, readCSV } from "../utils/csv.js";
+import { WEEK_DAYS } from "../utils/date.js";
 import { haversine } from "../utils/haversine.js";
+import { randomBetween } from "../utils/routeBuilder.js";
 
 let routes = null;
-
-const WEEK_DAYS = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-];
 
 export async function createRoutes(airports) {
   console.log("Creating routes with schedules...");
@@ -153,10 +145,6 @@ function generateFlightsForDay(distance, durationMinutes) {
   }
 
   return flights.sort((a, b) => a.departure.localeCompare(b.departure));
-}
-
-function randomBetween(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function randomMinute() {

@@ -51,7 +51,7 @@ export function buildRoutesResponse(routes, airportMap) {
 }
 
 function buildRouteId(path) {
-  return Buffer.from(path.join("->")).toString("base64");
+  return Buffer.from(path.join("-")).toString("base64");
 }
 
 function getPreviewCity(path, airportMap) {

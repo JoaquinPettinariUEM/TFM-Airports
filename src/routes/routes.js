@@ -4,6 +4,6 @@ import { getRouteById, getRoutes } from "../controllers/route.controller.js";
 const router = express.Router();
 
 router.get("/", getRoutes);
-router.get("/:id", getRouteById);
+router.get("/details/:pathKey", getRouteById);
 
 export default router;

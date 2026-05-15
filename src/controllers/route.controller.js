@@ -1,7 +1,7 @@
 import { findRoutes } from "../algorithms/dfs.js";
 import { getGraph, getAirportMap } from "../services/graph.js";
-import { getDayName } from "../utils/date.js";
 import { buildRoutesResponse } from "../utils/enrichRoutes.js";
+import { buildRouteFromPath } from "../utils/routeBuilder.js";
 
 export function getRoutes(req, res) {
   const { from, to, budget, maxStops, startDate, tripDays } = req.query;
@@ -21,7 +21,7 @@ export function getRoutes(req, res) {
 
     maxStops: maxStops ? Number(maxStops) : 4,
 
-    startDay: getDayName(startDate || new Date().toISOString()),
+    startDate: startDate || new Date().toISOString(),
 
     tripDays: tripDays ? Number(tripDays) : 7,
   });
@@ -33,8 +33,7 @@ export function getRoutes(req, res) {
 
 export function getRouteById(req, res) {
   const { pathKey } = req.params;
-
-  const { startDate, budget, maxStops, tripDays } = req.query;
+  const { startDate } = req.query;
 
   if (!pathKey) {
     return res.status(400).json({
@@ -42,35 +41,22 @@ export function getRouteById(req, res) {
     });
   }
 
-  const graph = getGraph();
+  if (!startDate) {
+    throw new Error("startDate is required");
+  }
 
+  const graph = getGraph();
   const airportMap = getAirportMap();
 
   const path = pathKey.split("->");
 
-  const from = path[0];
+  const route = buildRouteFromPath(path, graph, airportMap, { startDate });
 
-  const to = path[path.length - 1];
-
-  const routes = findRoutes(graph, from, to, airportMap, {
-    budget: budget ? Number(budget) : Infinity,
-
-    maxStops: maxStops ? Number(maxStops) : 4,
-
-    startDay: getDayName(startDate || new Date().toISOString()),
-
-    tripDays: tripDays ? Number(tripDays) : 7,
-  });
-
-  const matchedRoute = routes.find(route => route.pathKey === pathKey);
-
-  if (!matchedRoute) {
+  if (!route) {
     return res.status(404).json({
       error: "Route not found",
     });
   }
 
-  const enriched = enrichRouteDetails(matchedRoute, airportMap);
-
-  res.json(enriched);
+  res.json(route);
 }
