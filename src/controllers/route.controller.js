@@ -1,7 +1,8 @@
+import { City } from "../models/City.js";
+import { fetchWikipediaCity, createCitySlug } from "../services/wikipedia.js";
 import { findRoutes } from "../algorithms/dfs.js";
 import { getGraph, getAirportMap } from "../services/graph.js";
 import { buildRoutesResponse } from "../utils/enrichRoutes.js";
-import { buildRouteFromPath } from "../utils/routeBuilder.js";
 
 export function getRoutes(req, res) {
   const { from, to, budget, maxStops, startDate, tripDays } = req.query;
@@ -31,32 +32,77 @@ export function getRoutes(req, res) {
   res.json(response);
 }
 
-export function getRouteById(req, res) {
-  const { pathKey } = req.params;
-  const { startDate } = req.query;
+export async function getRouteDetails(req, res) {
+  try {
+    const { cities } = req.query;
 
-  if (!pathKey) {
-    return res.status(400).json({
-      error: "pathKey is required",
+    if (!cities) {
+      return res.status(400).json({
+        error: "cities query param is required",
+      });
+    }
+
+    const cityNames = cities
+      .split(",")
+      .map(city => city.trim())
+      .filter(Boolean);
+
+    const slugs = cityNames.map(createCitySlug);
+
+    const existingCities = await City.find({
+      slug: {
+        $in: slugs,
+      },
+    });
+
+    const existingMap = new Map(existingCities.map(city => [city.slug, city]));
+
+    const missingCities = cityNames.filter(city => {
+      const slug = createCitySlug(city);
+
+      return !existingMap.has(slug);
+    });
+
+    const newCities = [];
+
+    for (const cityName of missingCities) {
+      const wikipediaData = await fetchWikipediaCity(cityName);
+
+      if (!wikipediaData) {
+        continue;
+      }
+
+      const createdCity = await City.create({
+        slug: createCitySlug(cityName),
+        name: wikipediaData.name,
+        description: wikipediaData.description,
+        summary: wikipediaData.summary,
+        image: wikipediaData.image,
+        wikipediaUrl: wikipediaData.wikipediaUrl,
+        coordinates: wikipediaData.coordinates,
+      });
+
+      newCities.push(createdCity);
+    }
+
+    const allCities = [...existingCities, ...newCities];
+
+    const orderedCities = cityNames
+      .map(cityName => {
+        const slug = createCitySlug(cityName);
+
+        return allCities.find(city => city.slug === slug);
+      })
+      .filter(Boolean);
+
+    return res.json({
+      cities: orderedCities,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Internal server error",
     });
   }
-
-  if (!startDate) {
-    throw new Error("startDate is required");
-  }
-
-  const graph = getGraph();
-  const airportMap = getAirportMap();
-
-  const path = pathKey.split("->");
-
-  const route = buildRouteFromPath(path, graph, airportMap, { startDate });
-
-  if (!route) {
-    return res.status(404).json({
-      error: "Route not found",
-    });
-  }
-
-  res.json(route);
 }

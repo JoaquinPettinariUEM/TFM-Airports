@@ -10,15 +10,11 @@ export function buildRoutesResponse(routes, airportMap) {
       id: buildRouteId(route.path),
 
       path: route.path,
-
+      flights: route.flights,
       cost: route.cost,
-
       distance: route.distance,
-
       score: route.score,
-
       previewCity: getPreviewCity(route.path, airportMap),
-
       badge: getRouteBadge(index),
     };
   });

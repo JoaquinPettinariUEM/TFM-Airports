@@ -1,6 +1,5 @@
 import { addDays, format } from "date-fns";
 import { WEEK_DAYS } from "../utils/date.js";
-import { randomBetween } from "../utils/routeBuilder.js";
 import {
   addResult,
   canContinue,
@@ -8,6 +7,7 @@ import {
   formatResult,
   isSolution,
 } from "./extras.js";
+import { randomBetween } from "../services/routes.js";
 
 export function findRoutes(graph, start, target, airportMap, options = {}) {
   const config = {
@@ -88,7 +88,7 @@ function dfs(graph, current, target, state, context) {
         flight.departureDate.getTime() + flight.durationMinutes * 60000
       );
 
-      const stayDays = next === target ? 0 : randomBetween(2, 4);
+      const stayDays = randomBetween(2, 4);
 
       const nextSearchDate = addDays(arrivalDate, stayDays);
 

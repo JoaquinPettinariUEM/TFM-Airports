@@ -1,7 +1,6 @@
 import { buildPath, INITIAL_PATH, readCSV } from "../utils/csv.js";
 import { WEEK_DAYS } from "../utils/date.js";
 import { haversine } from "../utils/haversine.js";
-import { randomBetween } from "../utils/routeBuilder.js";
 
 let routes = null;
 
@@ -166,4 +165,8 @@ function addMinutesToTime(time, minutesToAdd) {
   const finalMinutes = totalMinutes % 60;
 
   return buildTime(finalHours, finalMinutes);
+}
+
+export function randomBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
