@@ -34,7 +34,8 @@ export function getRoutes(req, res) {
 
 export async function getRouteDetails(req, res) {
   try {
-    const { cities } = req.query;
+    const body = req.body;
+    const cities = body.citiesInfo;
 
     if (!cities) {
       return res.status(400).json({
@@ -43,8 +44,7 @@ export async function getRouteDetails(req, res) {
     }
 
     const cityNames = cities
-      .split(",")
-      .map(city => city.trim())
+      .map(cityInfo => `${cityInfo.city.trim()}, ${cityInfo.country.trim()}`)
       .filter(Boolean);
 
     const slugs = cityNames.map(createCitySlug);
@@ -76,6 +76,7 @@ export async function getRouteDetails(req, res) {
         slug: createCitySlug(cityName),
         name: wikipediaData.name,
         description: wikipediaData.description,
+        country: wikipediaData.country,
         summary: wikipediaData.summary,
         image: wikipediaData.image,
         wikipediaUrl: wikipediaData.wikipediaUrl,
@@ -96,7 +97,8 @@ export async function getRouteDetails(req, res) {
       .filter(Boolean);
 
     return res.json({
-      cities: orderedCities,
+      ...body,
+      citiesInfo: orderedCities,
     });
   } catch (error) {
     console.error(error);

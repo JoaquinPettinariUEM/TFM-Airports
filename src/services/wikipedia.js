@@ -1,3 +1,5 @@
+import { capitalizeFirstLetter } from "../utils/string.js";
+
 export async function fetchWikipediaCity(city) {
   const encodedCity = encodeURIComponent(city);
 
@@ -13,7 +15,8 @@ export async function fetchWikipediaCity(city) {
 
   return {
     name: data.title,
-    image: data.thumbnail?.source ?? data.originalimage?.source ?? null,
+    country: capitalizeFirstLetter(city.split(",")[1].trim()),
+    image: data.originalimage?.source ?? data.originalimage?.source ?? null,
     description: data.description ?? null,
     summary: data.extract ?? null,
     wikipediaUrl: data.content_urls?.desktop?.page ?? null,
