@@ -24,7 +24,7 @@ function buildDataToSaveOnFile(results) {
 }
 
 export async function createCSVWithOnlyLargeAirports() {
-  const results = await readCSV(buildPath(INITIAL_PATH, "../../airports.dat"));
+  const results = await readCSV(buildPath(INITIAL_PATH, "../data/airports.dat"));
   buildDataToSaveOnFile(results.slice(0, 1000));
 }
 

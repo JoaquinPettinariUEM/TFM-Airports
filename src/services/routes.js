@@ -9,7 +9,7 @@ export async function createRoutes(airports) {
 
   const routeMap = new Map();
 
-  const allRoutes = await readCSV(buildPath(INITIAL_PATH, "../../routes.dat"));
+  const allRoutes = await readCSV(buildPath(INITIAL_PATH, "../data/routes.dat"));
 
   const airportMap = new Map();
 

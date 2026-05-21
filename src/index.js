@@ -13,10 +13,11 @@ const PORT = process.env.PORT || 3000;
 async function startServer() {
   await connectDB();
   // deleteAirports();
-  const airports = await Airport.find();
+  let airports = await Airport.find();
   if (!airports?.length) {
     await createCSVWithOnlyLargeAirports();
     await importAirports();
+    airports = await Airport.find();
   }
 
   console.time("buildRoutes");
