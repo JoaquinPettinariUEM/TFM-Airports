@@ -14,6 +14,19 @@ const airportSchema = new mongoose.Schema({
   country: String,
   city: String,
   isHub: Boolean,
+  cityTier: {
+    type: String,
+    enum: ["standard", "tourist", "major"],
+    default: "standard",
+  },
+  popularityScore: {
+    type: Number,
+    default: 40,
+  },
+  recommendedStayDays: {
+    type: Number,
+    default: 2,
+  },
 });
 
 export default mongoose.model("Airport", airportSchema);

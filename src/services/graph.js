@@ -9,6 +9,9 @@ export function buildGraph(routes, airports) {
       city: ap.city,
       country: ap.country,
       location: ap.location,
+      cityTier: ap.cityTier,
+      popularityScore: ap.popularityScore,
+      recommendedStayDays: ap.recommendedStayDays,
     };
 
     graph[ap._id] = [];

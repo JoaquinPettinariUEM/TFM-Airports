@@ -44,7 +44,7 @@ export async function createRoutes(airports) {
         to: fly.to,
         distance: Math.round(distance),
 
-        basePrice: calculatePrice(distance),
+        basePrice: calculatePrice(distance, fromAirport, toAirport),
 
         schedules: generateSchedules(distance, durationMinutes),
       };
@@ -66,13 +66,34 @@ export async function createRoutes(airports) {
 
 export const getRoutes = () => routes;
 
-function calculatePrice(distance) {
+function calculatePrice(distance, fromAirport, toAirport) {
   const baseFare = 30;
   const costPerKm = 0.12;
 
-  const randomFactor = 0.8 + Math.random() * 0.4;
+  const fromTierMultiplier = getTierMultiplier(fromAirport?.cityTier);
+  const toTierMultiplier = getTierMultiplier(toAirport?.cityTier);
+  const tierMultiplier = (fromTierMultiplier + toTierMultiplier) / 2;
 
-  return Math.round((baseFare + distance * costPerKm) * randomFactor);
+  const popularityBoost = getPopularityBoost(fromAirport, toAirport);
+
+  return Math.round((baseFare + distance * costPerKm) * tierMultiplier + popularityBoost);
+}
+
+function getTierMultiplier(cityTier) {
+  if (cityTier === "major") return 1.12;
+
+  if (cityTier === "tourist") return 1.06;
+
+  return 1;
+}
+
+function getPopularityBoost(fromAirport, toAirport) {
+  const fromScore = Number(fromAirport?.popularityScore) || 40;
+  const toScore = Number(toAirport?.popularityScore) || 40;
+
+  const averageScore = (fromScore + toScore) / 2;
+
+  return Math.round(Math.max(0, averageScore - 40) * 0.5);
 }
 
 function calculateFlightDuration(distance) {

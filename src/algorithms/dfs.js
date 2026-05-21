@@ -7,7 +7,6 @@ import {
   formatResult,
   isSolution,
 } from "./extras.js";
-import { randomBetween } from "../services/routes.js";
 
 export function findRoutes(graph, start, target, airportMap, options = {}) {
   const config = {
@@ -88,7 +87,7 @@ function dfs(graph, current, target, state, context) {
         flight.departureDate.getTime() + flight.durationMinutes * 60000
       );
 
-      const stayDays = randomBetween(2, 4);
+      const stayDays = getRecommendedStayDays(airportMap[next]);
 
       const nextSearchDate = addDays(arrivalDate, stayDays);
 
@@ -127,4 +126,14 @@ function dfs(graph, current, target, state, context) {
       );
     }
   }
+}
+
+function getRecommendedStayDays(airport) {
+  const recommended = Number(airport?.recommendedStayDays);
+
+  if (Number.isFinite(recommended) && recommended >= 1) {
+    return recommended;
+  }
+
+  return 2;
 }
