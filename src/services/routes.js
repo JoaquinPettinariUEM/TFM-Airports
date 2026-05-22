@@ -1,6 +1,7 @@
 import { buildPath, INITIAL_PATH, readCSV } from "../utils/csv.js";
 import { WEEK_DAYS } from "../utils/date.js";
 import { haversine } from "../utils/haversine.js";
+import { createHash } from "node:crypto";
 
 let routes = null;
 
@@ -46,7 +47,7 @@ export async function createRoutes(airports) {
 
         basePrice: calculatePrice(distance, fromAirport, toAirport),
 
-        schedules: generateSchedules(distance, durationMinutes),
+        schedules: generateSchedules(fly.from, fly.to, distance, durationMinutes),
       };
     })
     .filter(Boolean)
@@ -104,10 +105,11 @@ function calculateFlightDuration(distance) {
   return Math.max(Math.round(hours * 60), 45);
 }
 
-function generateSchedules(distance, durationMinutes) {
+function generateSchedules(from, to, distance, durationMinutes) {
   const schedules = {};
+  const routeKey = `${from}-${to}`;
 
-  const activeDays = pickActiveDays(distance);
+  const activeDays = pickActiveDays(routeKey, distance);
 
   WEEK_DAYS.forEach(day => {
     if (!activeDays.includes(day)) {
@@ -115,46 +117,50 @@ function generateSchedules(distance, durationMinutes) {
       return;
     }
 
-    schedules[day] = generateFlightsForDay(distance, durationMinutes);
+    schedules[day] = generateFlightsForDay(routeKey, day, distance, durationMinutes);
   });
 
   return schedules;
 }
 
-function pickActiveDays(distance) {
-  let amountOfDays = 2;
+function pickActiveDays(routeKey, distance) {
+  const seed = stableHash(routeKey);
+  let minDays = 1;
+  let maxDays = 3;
 
   if (distance < 1000) {
-    amountOfDays = randomBetween(4, 7);
+    minDays = 4;
+    maxDays = 7;
   } else if (distance < 3000) {
-    amountOfDays = randomBetween(2, 5);
-  } else {
-    amountOfDays = randomBetween(1, 3);
+    minDays = 2;
+    maxDays = 5;
   }
 
-  const shuffled = [...WEEK_DAYS].sort(() => Math.random() - 0.5);
+  const amountOfDays = pickNumberInRange(seed, minDays, maxDays);
+  const dayOrder = rotateDeterministically(WEEK_DAYS, seed);
 
-  return shuffled.slice(0, amountOfDays);
+  return dayOrder.slice(0, amountOfDays);
 }
 
-function generateFlightsForDay(distance, durationMinutes) {
-  let amountOfFlights = 1;
+function generateFlightsForDay(routeKey, day, distance, durationMinutes) {
+  const daySeed = stableHash(`${routeKey}-${day}`);
+  let minFlights = 1;
+  let maxFlights = 1;
 
   if (distance < 1000) {
-    amountOfFlights = randomBetween(1, 3);
+    minFlights = 1;
+    maxFlights = 3;
   } else if (distance < 3000) {
-    amountOfFlights = randomBetween(1, 2);
+    minFlights = 1;
+    maxFlights = 2;
   }
 
+  const amountOfFlights = pickNumberInRange(daySeed, minFlights, maxFlights);
   const flights = [];
+  const slots = getTimeSlotsByDistance(distance);
+  const selectedSlots = rotateDeterministically(slots, daySeed).slice(0, amountOfFlights);
 
-  for (let i = 0; i < amountOfFlights; i++) {
-    const departureHour = randomBetween(5, 22);
-
-    const departureMinute = randomMinute();
-
-    const departure = buildTime(departureHour, departureMinute);
-
+  for (const departure of selectedSlots) {
     const arrival = addMinutesToTime(departure, durationMinutes);
 
     flights.push({
@@ -167,10 +173,16 @@ function generateFlightsForDay(distance, durationMinutes) {
   return flights.sort((a, b) => a.departure.localeCompare(b.departure));
 }
 
-function randomMinute() {
-  const validMinutes = [0, 15, 30, 45];
+function getTimeSlotsByDistance(distance) {
+  if (distance < 1000) {
+    return ["06:00", "08:30", "11:15", "14:00", "17:10", "20:45"];
+  }
 
-  return validMinutes[Math.floor(Math.random() * validMinutes.length)];
+  if (distance < 3000) {
+    return ["07:15", "12:20", "16:40", "21:05"];
+  }
+
+  return ["09:10", "18:35"];
 }
 
 function buildTime(hour, minute) {
@@ -188,6 +200,22 @@ function addMinutesToTime(time, minutesToAdd) {
   return buildTime(finalHours, finalMinutes);
 }
 
-export function randomBetween(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function stableHash(text) {
+  const hex = createHash("sha256").update(text).digest("hex");
+
+  return Number.parseInt(hex.slice(0, 8), 16);
+}
+
+function pickNumberInRange(seed, min, max) {
+  const span = max - min + 1;
+
+  return min + (seed % span);
+}
+
+function rotateDeterministically(items, seed) {
+  if (!items.length) return [];
+
+  const pivot = seed % items.length;
+
+  return [...items.slice(pivot), ...items.slice(0, pivot)];
 }
