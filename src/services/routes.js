@@ -10,19 +10,22 @@ export async function createRoutes(airports) {
 
   const routeMap = new Map();
 
-  const allRoutes = await readCSV(buildPath(INITIAL_PATH, "../data/routes.dat"));
+  const allRoutes = await readCSV(
+    buildPath(INITIAL_PATH, "../data/routes.dat")
+  );
 
   const airportMap = new Map();
 
-  airports.forEach(ap => {
+  airports.forEach((ap) => {
     airportMap.set(ap._id, ap);
   });
 
   routes = allRoutes
     .filter(
-      fly => fly.from && fly.to && airportMap.has(fly.from) && airportMap.has(fly.to)
+      (fly) =>
+        fly.from && fly.to && airportMap.has(fly.from) && airportMap.has(fly.to)
     )
-    .map(fly => {
+    .map((fly) => {
       const fromAirport = airportMap.get(fly.from);
       const toAirport = airportMap.get(fly.to);
 
@@ -47,11 +50,16 @@ export async function createRoutes(airports) {
 
         basePrice: calculatePrice(distance, fromAirport, toAirport),
 
-        schedules: generateSchedules(fly.from, fly.to, distance, durationMinutes),
+        schedules: generateSchedules(
+          fly.from,
+          fly.to,
+          distance,
+          durationMinutes
+        ),
       };
     })
     .filter(Boolean)
-    .filter(route => {
+    .filter((route) => {
       const key = `${route.from}-${route.to}`;
 
       if (!routeMap.has(key)) {
@@ -77,7 +85,9 @@ function calculatePrice(distance, fromAirport, toAirport) {
 
   const popularityBoost = getPopularityBoost(fromAirport, toAirport);
 
-  return Math.round((baseFare + distance * costPerKm) * tierMultiplier + popularityBoost);
+  return Math.round(
+    (baseFare + distance * costPerKm) * tierMultiplier + popularityBoost
+  );
 }
 
 function getTierMultiplier(cityTier) {
@@ -111,13 +121,18 @@ function generateSchedules(from, to, distance, durationMinutes) {
 
   const activeDays = pickActiveDays(routeKey, distance);
 
-  WEEK_DAYS.forEach(day => {
+  WEEK_DAYS.forEach((day) => {
     if (!activeDays.includes(day)) {
       schedules[day] = [];
       return;
     }
 
-    schedules[day] = generateFlightsForDay(routeKey, day, distance, durationMinutes);
+    schedules[day] = generateFlightsForDay(
+      routeKey,
+      day,
+      distance,
+      durationMinutes
+    );
   });
 
   return schedules;
@@ -157,8 +172,11 @@ function generateFlightsForDay(routeKey, day, distance, durationMinutes) {
 
   const amountOfFlights = pickNumberInRange(daySeed, minFlights, maxFlights);
   const flights = [];
-  const slots = getTimeSlotsByDistance(distance);
-  const selectedSlots = rotateDeterministically(slots, daySeed).slice(0, amountOfFlights);
+  const timeSlots = getTimeSlotsByDistance(distance);
+  const selectedSlots = rotateDeterministically(timeSlots, daySeed).slice(
+    0,
+    amountOfFlights
+  );
 
   for (const departure of selectedSlots) {
     const arrival = addMinutesToTime(departure, durationMinutes);

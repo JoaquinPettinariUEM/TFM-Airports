@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   await connectDB();
-  // deleteAirports();
+  //await deleteAirports();
   let airports = await Airport.find();
   if (!airports?.length) {
     await createCSVWithOnlyLargeAirports();

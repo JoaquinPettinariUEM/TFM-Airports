@@ -13,6 +13,8 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
     budget: Infinity,
     maxStops: 4,
     maxResults: 10,
+    maxStatesExplored: 200000,
+    maxSearchMs: 2500,
 
     startDate: new Date().toISOString(),
     tripDays: 7,
@@ -46,6 +48,7 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
       target,
       airportMap,
       endDate,
+      startedAt: Date.now(),
     }
   );
 
@@ -55,7 +58,17 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
 function dfs(graph, current, target, state, context) {
   const { path, flights, cost, distance, currentDateTime } = state;
 
-  const { results, options, airportMap, endDate } = context;
+  const { results, options, airportMap, endDate, startedAt } = context;
+
+  if (options.maxStatesExplored <= 0) {
+    return;
+  }
+
+  options.maxStatesExplored -= 1;
+
+  if (Date.now() - startedAt > options.maxSearchMs) {
+    return;
+  }
 
   if (!canContinue(state, options, results)) {
     return;
@@ -80,7 +93,7 @@ function dfs(graph, current, target, state, context) {
 
     if (path.includes(next)) continue;
 
-    const availableFlights = findFlightsAfterDate(edge, currentDateTime);
+    const availableFlights = findFlightsAfterDate(edge, currentDateTime, endDate);
 
     for (const flight of availableFlights) {
       const arrivalDate = new Date(

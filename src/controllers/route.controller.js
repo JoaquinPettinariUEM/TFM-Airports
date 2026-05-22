@@ -27,7 +27,9 @@ export function getRoutes(req, res) {
     tripDays: tripDays ? Number(tripDays) : 7,
   });
 
-  const response = buildRoutesResponse(routes, airportMap);
+  const response = buildRoutesResponse(routes, airportMap, {
+    budget: budget ? Number(budget) : Infinity,
+  });
 
   res.json(response);
 }
@@ -44,7 +46,7 @@ export async function getRouteDetails(req, res) {
     }
 
     const cityNames = cities
-      .map(cityInfo => `${cityInfo.city.trim()}, ${cityInfo.country.trim()}`)
+      .map((cityInfo) => `${cityInfo.city.trim()}, ${cityInfo.country.trim()}`)
       .filter(Boolean);
 
     const slugs = cityNames.map(createCitySlug);
@@ -55,9 +57,11 @@ export async function getRouteDetails(req, res) {
       },
     });
 
-    const existingMap = new Map(existingCities.map(city => [city.slug, city]));
+    const existingMap = new Map(
+      existingCities.map((city) => [city.slug, city])
+    );
 
-    const missingCities = cityNames.filter(city => {
+    const missingCities = cityNames.filter((city) => {
       const slug = createCitySlug(city);
 
       return !existingMap.has(slug);
@@ -89,10 +93,10 @@ export async function getRouteDetails(req, res) {
     const allCities = [...existingCities, ...newCities];
 
     const orderedCities = cityNames
-      .map(cityName => {
+      .map((cityName) => {
         const slug = createCitySlug(cityName);
 
-        return allCities.find(city => city.slug === slug);
+        return allCities.find((city) => city.slug === slug);
       })
       .filter(Boolean);
 

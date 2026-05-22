@@ -94,10 +94,14 @@ export function addResult(results, newResult, maxResults) {
   }
 }
 
-export function findFlightsAfterDate(edge, currentDateTime) {
+export function findFlightsAfterDate(edge, currentDateTime, endDate) {
   const results = [];
+  const effectiveEndDate = endDate instanceof Date ? endDate : addDays(currentDateTime, 14);
+  const remainingMs = effectiveEndDate.getTime() - currentDateTime.getTime();
+  const remainingDays = Math.max(0, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+  const lookAheadDays = Math.min(14, remainingDays + 1);
 
-  for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < lookAheadDays; dayOffset++) {
     const date = addDays(currentDateTime, dayOffset);
 
     const weekday = WEEK_DAYS[date.getDay()];
@@ -110,6 +114,10 @@ export function findFlightsAfterDate(edge, currentDateTime) {
       const diffMinutes = (departureDate.getTime() - currentDateTime.getTime()) / 60000;
 
       if (diffMinutes < MIN_LAYOVER_MINUTES) {
+        continue;
+      }
+
+      if (departureDate > effectiveEndDate) {
         continue;
       }
 
