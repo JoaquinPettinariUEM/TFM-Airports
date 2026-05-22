@@ -33,9 +33,10 @@ export function buildRoutesResponse(routes, airportMap, options = {}) {
     : [];
 
   const bestRoute = recommendedPool[0] ?? normalizedRoutes[0] ?? null;
-  const recommendedRoutes = bestRoute
+  const rawRecommendedRoutes = bestRoute
     ? recommendedPool.filter(route => route.id !== bestRoute.id)
     : [];
+  const recommendedRoutes = diversifyByFirstHop(rawRecommendedRoutes);
   const moreExpensiveOptions = bestRoute
     ? expensivePool.filter(route => route.id !== bestRoute.id)
     : expensivePool;
@@ -87,7 +88,8 @@ function getPreviewCity(path, airportMap) {
     return airportMap[path[0]]?.city ?? "";
   }
 
-  const selectedAirport = middleAirports[0];
+  const selectedAirport =
+    middleAirports.length > 1 ? middleAirports[1] : middleAirports[0];
 
   return airportMap[selectedAirport]?.city ?? "";
 }
@@ -117,4 +119,26 @@ function getExpensiveRouteBadge(index) {
   }
 
   return "Smart Choice";
+}
+
+function diversifyByFirstHop(routes) {
+  if (routes.length <= 1) return routes;
+
+  const firstHopSeen = new Set();
+  const uniqueFirstHop = [];
+  const remaining = [];
+
+  for (const route of routes) {
+    const firstHop = route.path?.[1] ?? "";
+
+    if (firstHop && !firstHopSeen.has(firstHop)) {
+      firstHopSeen.add(firstHop);
+      uniqueFirstHop.push(route);
+      continue;
+    }
+
+    remaining.push(route);
+  }
+
+  return [...uniqueFirstHop, ...remaining];
 }
