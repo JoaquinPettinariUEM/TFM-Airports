@@ -11,7 +11,9 @@ export function canContinue(state, options, results) {
 
   if (cost > budget + 200) return false;
 
-  if (path.length > maxStops + 1) return false;
+  // path = airports visited. Flights = path.length - 1. Stops = flights - 1.
+  // Therefore, max flights allowed = maxStops + 1 => path.length <= maxStops + 2.
+  if (path.length > maxStops + 2) return false;
 
   if (results.length >= maxResults) {
     const worst = results[results.length - 1];

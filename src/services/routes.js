@@ -9,28 +9,22 @@ export async function createRoutes(airports) {
   console.log("Creating routes with schedules...");
 
   const routeMap = new Map();
-
-  const allRoutes = await readCSV(
-    buildPath(INITIAL_PATH, "../data/routes.dat")
-  );
-
+  const allRoutes = await readCSV(buildPath(INITIAL_PATH, "../data/routes.dat"));
   const airportMap = new Map();
 
-  airports.forEach((ap) => {
+  airports.forEach(ap => {
     airportMap.set(ap._id, ap);
   });
 
   routes = allRoutes
     .filter(
-      (fly) =>
-        fly.from && fly.to && airportMap.has(fly.from) && airportMap.has(fly.to)
+      fly => fly.from && fly.to && airportMap.has(fly.from) && airportMap.has(fly.to)
     )
-    .map((fly) => {
+    .map(fly => {
       const fromAirport = airportMap.get(fly.from);
       const toAirport = airportMap.get(fly.to);
 
       if (!fromAirport || !toAirport) {
-        console.warn("Invalid airport coords", fly);
         return null;
       }
 
@@ -47,26 +41,17 @@ export async function createRoutes(airports) {
         from: fly.from,
         to: fly.to,
         distance: Math.round(distance),
-
         basePrice: calculatePrice(distance, fromAirport, toAirport),
-
-        schedules: generateSchedules(
-          fly.from,
-          fly.to,
-          distance,
-          durationMinutes
-        ),
+        schedules: generateSchedules(fly.from, fly.to, distance, durationMinutes),
       };
     })
     .filter(Boolean)
-    .filter((route) => {
+    .filter(route => {
       const key = `${route.from}-${route.to}`;
-
       if (!routeMap.has(key)) {
         routeMap.set(key, true);
         return true;
       }
-
       return false;
     });
 
@@ -78,61 +63,54 @@ export const getRoutes = () => routes;
 function calculatePrice(distance, fromAirport, toAirport) {
   const baseFare = 30;
   const costPerKm = 0.12;
+  const baseCost = baseFare + distance * costPerKm;
 
-  const fromTierMultiplier = getTierMultiplier(fromAirport?.cityTier);
-  const toTierMultiplier = getTierMultiplier(toAirport?.cityTier);
-  const tierMultiplier = (fromTierMultiplier + toTierMultiplier) / 2;
+  const avgTierMultiplier =
+    (getTierPriceMultiplier(fromAirport?.cityTier) +
+      getTierPriceMultiplier(toAirport?.cityTier)) /
+    2;
 
-  const popularityBoost = getPopularityBoost(fromAirport, toAirport);
+  const avgPopularity =
+    ((Number(fromAirport?.popularityScore) || 40) +
+      (Number(toAirport?.popularityScore) || 40)) /
+    2;
 
-  return Math.round(
-    (baseFare + distance * costPerKm) * tierMultiplier + popularityBoost
-  );
+  // Cuanto más popular, menor penalización final (favorece hubs/capitales).
+  const popularityMultiplier = clamp(1.1 - avgPopularity / 500, 0.88, 1.08);
+
+  // Variación controlada para simular demanda.
+  const demandFactor = 0.95 + Math.random() * 0.18;
+
+  return Math.round(baseCost * avgTierMultiplier * popularityMultiplier * demandFactor);
 }
 
-function getTierMultiplier(cityTier) {
-  if (cityTier === "major") return 1.12;
-
-  if (cityTier === "tourist") return 1.06;
-
-  return 1;
+function getTierPriceMultiplier(cityTier) {
+  if (cityTier === "major") return 0.86;
+  if (cityTier === "tourist") return 0.97;
+  return 1.12;
 }
 
-function getPopularityBoost(fromAirport, toAirport) {
-  const fromScore = Number(fromAirport?.popularityScore) || 40;
-  const toScore = Number(toAirport?.popularityScore) || 40;
-
-  const averageScore = (fromScore + toScore) / 2;
-
-  return Math.round(Math.max(0, averageScore - 40) * 0.5);
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function calculateFlightDuration(distance) {
   const averageSpeedKmH = 780;
-
   const hours = distance / averageSpeedKmH;
-
   return Math.max(Math.round(hours * 60), 45);
 }
 
 function generateSchedules(from, to, distance, durationMinutes) {
   const schedules = {};
   const routeKey = `${from}-${to}`;
-
   const activeDays = pickActiveDays(routeKey, distance);
 
-  WEEK_DAYS.forEach((day) => {
+  WEEK_DAYS.forEach(day => {
     if (!activeDays.includes(day)) {
       schedules[day] = [];
       return;
     }
-
-    schedules[day] = generateFlightsForDay(
-      routeKey,
-      day,
-      distance,
-      durationMinutes
-    );
+    schedules[day] = generateFlightsForDay(routeKey, day, distance, durationMinutes);
   });
 
   return schedules;
@@ -153,7 +131,6 @@ function pickActiveDays(routeKey, distance) {
 
   const amountOfDays = pickNumberInRange(seed, minDays, maxDays);
   const dayOrder = rotateDeterministically(WEEK_DAYS, seed);
-
   return dayOrder.slice(0, amountOfDays);
 }
 
@@ -173,10 +150,7 @@ function generateFlightsForDay(routeKey, day, distance, durationMinutes) {
   const amountOfFlights = pickNumberInRange(daySeed, minFlights, maxFlights);
   const flights = [];
   const timeSlots = getTimeSlotsByDistance(distance);
-  const selectedSlots = rotateDeterministically(timeSlots, daySeed).slice(
-    0,
-    amountOfFlights
-  );
+  const selectedSlots = rotateDeterministically(timeSlots, daySeed).slice(0, amountOfFlights);
 
   for (const departure of selectedSlots) {
     const arrival = addMinutesToTime(departure, durationMinutes);
@@ -209,31 +183,28 @@ function buildTime(hour, minute) {
 
 function addMinutesToTime(time, minutesToAdd) {
   const [hours, minutes] = time.split(":").map(Number);
-
   const totalMinutes = hours * 60 + minutes + minutesToAdd;
-
   const finalHours = Math.floor(totalMinutes / 60) % 24;
   const finalMinutes = totalMinutes % 60;
-
   return buildTime(finalHours, finalMinutes);
 }
 
 function stableHash(text) {
   const hex = createHash("sha256").update(text).digest("hex");
-
   return Number.parseInt(hex.slice(0, 8), 16);
 }
 
 function pickNumberInRange(seed, min, max) {
   const span = max - min + 1;
-
   return min + (seed % span);
 }
 
 function rotateDeterministically(items, seed) {
   if (!items.length) return [];
-
   const pivot = seed % items.length;
-
   return [...items.slice(pivot), ...items.slice(0, pivot)];
+}
+
+export function randomBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
