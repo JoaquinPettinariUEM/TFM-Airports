@@ -1,8 +1,10 @@
 import { City } from "../models/City.js";
 import { fetchWikipediaCity, createCitySlug } from "../services/wikipedia.js";
+import { getCityImage } from "../services/cityImage.js";
 import { findRoutes } from "../algorithms/dfs.js";
 import { getGraph, getAirportMap } from "../services/graph.js";
 import { buildRoutesResponse } from "../utils/enrichRoutes.js";
+import { normalizeCity } from "../utils/normalizeCity.js";
 
 export function getRoutes(req, res) {
   const { from, to, budget, maxStops, startDate, tripDays } = req.query;
@@ -91,36 +93,40 @@ export async function getRouteDetails(req, res) {
 
     const allCities = [...existingCities, ...newCities];
 
-    const orderedCities = cities.map((cityInfo, index) => {
-      const cityName = cityNames[index];
-      const slug = createCitySlug(cityName);
-      const match = allCities.find((city) => city.slug === slug);
+    const orderedCities = await Promise.all(
+      cities.map(async (cityInfo, index) => {
+        const cityName = cityNames[index];
+        const slug = createCitySlug(cityName);
+        const match = allCities.find((city) => city.slug === slug);
 
-      if (match) {
-        return match;
-      }
+        if (match) {
+          return await withImageFallback(match, cityInfo, req);
+        }
 
-      return {
-        _id: slug,
-        slug,
-        name: cityInfo.city,
-        country: cityInfo.country,
-        description: `${cityInfo.city}, ${cityInfo.country}`,
-        summary: "No additional city information available for this stop.",
-        image: null,
-        wikipediaUrl: null,
-        coordinates: cityInfo.location
-          ? {
-              lat: cityInfo.location.lat,
-              lon: cityInfo.location.lon,
-            }
-          : null,
-        source: "fallback",
-        cachedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    });
+        const fallbackCity = {
+          _id: slug,
+          slug,
+          name: cityInfo.city,
+          country: cityInfo.country,
+          description: `${cityInfo.city}, ${cityInfo.country}`,
+          summary: "No additional city information available for this stop.",
+          image: null,
+          wikipediaUrl: null,
+          coordinates: cityInfo.location
+            ? {
+                lat: cityInfo.location.lat,
+                lon: cityInfo.location.lon,
+              }
+            : null,
+          source: "fallback",
+          cachedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        return await withImageFallback(fallbackCity, cityInfo, req);
+      }),
+    );
 
     return res.json({
       ...body,
@@ -133,4 +139,29 @@ export async function getRouteDetails(req, res) {
       error: "Internal server error",
     });
   }
+}
+
+async function withImageFallback(cityData, cityInfo, req) {
+  if (cityData.image) {
+    return cityData;
+  }
+
+  const cityName = cityInfo?.city ?? cityData?.name;
+  if (!cityName) {
+    return cityData;
+  }
+
+  try {
+    await getCityImage(cityName);
+  } catch (error) {
+    return cityData;
+  }
+
+  const normalized = normalizeCity(cityName);
+  const host = req.get("host");
+  const baseUrl = `${req.protocol}://${host}`;
+  return {
+    ...cityData,
+    image: `${baseUrl}/cities/${normalized}.jpg`,
+  };
 }
