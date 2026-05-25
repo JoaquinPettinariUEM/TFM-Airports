@@ -12,6 +12,7 @@ import { randomBetween } from "../services/routes.js";
 export function findRoutes(graph, start, target, airportMap, options = {}) {
   const config = {
     budget: Infinity,
+    minStops: 1,
     maxStops: 4,
     maxResults: 10,
     maxStatesExplored: 200000,
@@ -53,7 +54,20 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
     },
   );
 
-  return results.sort((a, b) => a.score - b.score);
+  return results.sort((a, b) => {
+    const stopDistanceA = Math.abs(a.path.length - 2 - config.maxStops);
+    const stopDistanceB = Math.abs(b.path.length - 2 - config.maxStops);
+
+    if (stopDistanceA !== stopDistanceB) {
+      return stopDistanceA - stopDistanceB;
+    }
+
+    if (a.score !== b.score) {
+      return a.score - b.score;
+    }
+
+    return a.cost - b.cost;
+  });
 }
 
 function dfs(graph, current, target, state, context) {
@@ -79,7 +93,7 @@ function dfs(graph, current, target, state, context) {
     return;
   }
 
-  if (isSolution(current, target, state)) {
+  if (isSolution(current, target, state, options)) {
     const result = formatResult(state, airportMap, target);
 
     addResult(results, result, options.maxResults);

@@ -1,13 +1,8 @@
 export function buildRoutesResponse(routes, airportMap, options = {}) {
-  const { budget = Infinity } = options;
+  const { budget = Infinity, maxStops = 4 } = options;
   const usedAirportIds = new Set();
 
-  const normalizedRoutes = normalizeRoutes(
-    routes,
-    airportMap,
-    usedAirportIds,
-    getRouteBadge
-  );
+  const normalizedRoutes = normalizeRoutes(routes, airportMap, usedAirportIds, getRouteBadge);
   const airports = buildAirportsMap(usedAirportIds, airportMap);
 
   const isBudgetFinite = Number.isFinite(budget);
@@ -18,12 +13,16 @@ export function buildRoutesResponse(routes, airportMap, options = {}) {
     ? normalizedRoutes.filter((route) => route.cost > budget)
     : [];
 
-  const bestRoute = recommendedPool[0] ?? normalizedRoutes[0] ?? null;
+  const prioritizedRecommended = prioritizeByStops(recommendedPool, maxStops);
+  const prioritizedAll = prioritizeByStops(normalizedRoutes, maxStops);
+  const prioritizedExpensive = prioritizeByStops(expensivePool, maxStops);
+
+  const bestRoute = prioritizedRecommended[0] ?? prioritizedAll[0] ?? null;
   const rawRecommendedRoutes = bestRoute
-    ? recommendedPool.filter((route) => route.id !== bestRoute.id)
+    ? prioritizedRecommended.filter((route) => route.id !== bestRoute.id)
     : [];
   const recommendedRoutes = rawRecommendedRoutes;
-  const moreExpensiveOptions = expensivePool.map((route, index) => ({
+  const moreExpensiveOptions = prioritizedExpensive.map((route, index) => ({
     ...route,
     badge: getExpensiveRouteBadge(index),
   }));
@@ -86,8 +85,7 @@ function getPreviewCity(path, airportMap) {
     return airportMap[path[0]]?.city ?? "";
   }
 
-  const selectedAirport =
-    middleAirports.length > 1 ? middleAirports[1] : middleAirports[0];
+  const selectedAirport = middleAirports.length > 1 ? middleAirports[1] : middleAirports[0];
 
   return airportMap[selectedAirport]?.city ?? "";
 }
@@ -97,6 +95,30 @@ function getRouteBadge(index) {
   if (index === 1) return "Best Price";
   if (index === 2) return "Fastest";
   return "Smart Choice";
+}
+
+function prioritizeByStops(routes, maxStops) {
+  return [...routes]
+    .filter((route) => route.path.length - 2 >= 1)
+    .sort((a, b) => {
+      const distanceA = Math.abs(a.path.length - 2 - maxStops);
+      const distanceB = Math.abs(b.path.length - 2 - maxStops);
+
+      if (distanceA !== distanceB) return distanceA - distanceB;
+      if (a.score !== b.score) return a.score - b.score;
+      return a.cost - b.cost;
+    })
+    .map((route) => {
+      const stops = route.path.length - 2;
+      const hasFewerStops = stops < maxStops;
+
+      return hasFewerStops
+        ? {
+            ...route,
+            badge: "Fewer Stops",
+          }
+        : route;
+    });
 }
 
 function getExpensiveRouteBadge(index) {

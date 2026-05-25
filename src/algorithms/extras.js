@@ -24,8 +24,15 @@ export function canContinue(state, options, results) {
   return true;
 }
 
-export function isSolution(current, target, state) {
-  return current === target && state.path.length > 1;
+export function isSolution(current, target, state, options) {
+  if (current !== target || state.path.length <= 1) {
+    return false;
+  }
+
+  const stops = state.path.length - 2;
+  const minStops = Number.isFinite(options?.minStops) ? Number(options.minStops) : 1;
+
+  return stops >= minStops;
 }
 
 export function formatResult(state, airportMap, target) {
@@ -64,14 +71,14 @@ export function calculatePenalty(state, airportMap, target) {
       current.location.lat,
       current.location.lon,
       targetAirport.location.lat,
-      targetAirport.location.lon
+      targetAirport.location.lon,
     );
 
     const distNext = haversine(
       next.location.lat,
       next.location.lon,
       targetAirport.location.lat,
-      targetAirport.location.lon
+      targetAirport.location.lon,
     );
 
     if (distNext > distCurrent) {
@@ -83,7 +90,7 @@ export function calculatePenalty(state, airportMap, target) {
 }
 
 export function addResult(results, newResult, maxResults) {
-  const exists = results.some(r => r.pathKey === newResult.pathKey);
+  const exists = results.some((r) => r.pathKey === newResult.pathKey);
 
   if (exists) return;
 

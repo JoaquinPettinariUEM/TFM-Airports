@@ -19,7 +19,7 @@ export function getRoutes(req, res) {
 
   const routes = findRoutes(graph, from, to, airportMap, {
     budget: budget ? Number(budget) : Infinity,
-
+    minStops: 1,
     maxStops: maxStops ? Number(maxStops) : 4,
 
     startDate: startDate || new Date().toISOString(),
@@ -29,6 +29,7 @@ export function getRoutes(req, res) {
 
   const response = buildRoutesResponse(routes, airportMap, {
     budget: budget ? Number(budget) : Infinity,
+    maxStops: maxStops ? Number(maxStops) : 4,
   });
 
   res.json(response);
@@ -57,9 +58,7 @@ export async function getRouteDetails(req, res) {
       },
     });
 
-    const existingMap = new Map(
-      existingCities.map((city) => [city.slug, city])
-    );
+    const existingMap = new Map(existingCities.map((city) => [city.slug, city]));
 
     const missingCities = cityNames.filter((city) => {
       const slug = createCitySlug(city);
@@ -92,13 +91,36 @@ export async function getRouteDetails(req, res) {
 
     const allCities = [...existingCities, ...newCities];
 
-    const orderedCities = cityNames
-      .map((cityName) => {
-        const slug = createCitySlug(cityName);
+    const orderedCities = cities.map((cityInfo, index) => {
+      const cityName = cityNames[index];
+      const slug = createCitySlug(cityName);
+      const match = allCities.find((city) => city.slug === slug);
 
-        return allCities.find((city) => city.slug === slug);
-      })
-      .filter(Boolean);
+      if (match) {
+        return match;
+      }
+
+      return {
+        _id: slug,
+        slug,
+        name: cityInfo.city,
+        country: cityInfo.country,
+        description: `${cityInfo.city}, ${cityInfo.country}`,
+        summary: "No additional city information available for this stop.",
+        image: null,
+        wikipediaUrl: null,
+        coordinates: cityInfo.location
+          ? {
+              lat: cityInfo.location.lat,
+              lon: cityInfo.location.lon,
+            }
+          : null,
+        source: "fallback",
+        cachedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
 
     return res.json({
       ...body,
