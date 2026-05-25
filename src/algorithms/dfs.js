@@ -15,7 +15,7 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
     maxStops: 4,
     maxResults: 10,
     maxStatesExplored: 200000,
-    maxSearchMs: 2500,
+    maxSearchMs: 10000,
 
     startDate: new Date().toISOString(),
     tripDays: 7,
@@ -50,7 +50,7 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
       airportMap,
       endDate,
       startedAt: Date.now(),
-    }
+    },
   );
 
   return results.sort((a, b) => a.score - b.score);
@@ -97,9 +97,7 @@ function dfs(graph, current, target, state, context) {
     const availableFlights = findFlightsAfterDate(edge, currentDateTime, endDate);
 
     for (const flight of availableFlights) {
-      const arrivalDate = new Date(
-        flight.departureDate.getTime() + flight.durationMinutes * 60000
-      );
+      const arrivalDate = new Date(flight.departureDate.getTime() + flight.durationMinutes * 60000);
 
       const stayDays = randomBetween(2, 4);
 
@@ -136,7 +134,7 @@ function dfs(graph, current, target, state, context) {
 
           currentDateTime: nextSearchDate,
         },
-        context
+        context,
       );
     }
   }
