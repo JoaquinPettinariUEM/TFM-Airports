@@ -12,15 +12,13 @@ export async function createRoutes(airports) {
   const allRoutes = await readCSV(buildPath(INITIAL_PATH, "../data/routes.dat"));
   const airportMap = new Map();
 
-  airports.forEach(ap => {
+  airports.forEach((ap) => {
     airportMap.set(ap._id, ap);
   });
 
   routes = allRoutes
-    .filter(
-      fly => fly.from && fly.to && airportMap.has(fly.from) && airportMap.has(fly.to)
-    )
-    .map(fly => {
+    .filter((fly) => fly.from && fly.to && airportMap.has(fly.from) && airportMap.has(fly.to))
+    .map((fly) => {
       const fromAirport = airportMap.get(fly.from);
       const toAirport = airportMap.get(fly.to);
 
@@ -32,7 +30,7 @@ export async function createRoutes(airports) {
         fromAirport.location.lat,
         fromAirport.location.lon,
         toAirport.location.lat,
-        toAirport.location.lon
+        toAirport.location.lon,
       );
 
       const durationMinutes = calculateFlightDuration(distance);
@@ -46,7 +44,7 @@ export async function createRoutes(airports) {
       };
     })
     .filter(Boolean)
-    .filter(route => {
+    .filter((route) => {
       const key = `${route.from}-${route.to}`;
       if (!routeMap.has(key)) {
         routeMap.set(key, true);
@@ -66,22 +64,15 @@ function calculatePrice(distance, fromAirport, toAirport) {
   const baseCost = baseFare + distance * costPerKm;
 
   const avgTierMultiplier =
-    (getTierPriceMultiplier(fromAirport?.cityTier) +
-      getTierPriceMultiplier(toAirport?.cityTier)) /
+    (getTierPriceMultiplier(fromAirport?.cityTier) + getTierPriceMultiplier(toAirport?.cityTier)) /
     2;
 
   const avgPopularity =
-    ((Number(fromAirport?.popularityScore) || 40) +
-      (Number(toAirport?.popularityScore) || 40)) /
-    2;
+    ((Number(fromAirport?.popularityScore) || 40) + (Number(toAirport?.popularityScore) || 40)) / 2;
 
-  // Cuanto más popular, menor penalización final (favorece hubs/capitales).
   const popularityMultiplier = clamp(1.1 - avgPopularity / 500, 0.88, 1.08);
 
-  // Variación controlada para simular demanda.
-  const demandFactor = 0.95 + Math.random() * 0.18;
-
-  return Math.round(baseCost * avgTierMultiplier * popularityMultiplier * demandFactor);
+  return Math.round(baseCost * avgTierMultiplier * popularityMultiplier);
 }
 
 function getTierPriceMultiplier(cityTier) {
@@ -105,7 +96,7 @@ function generateSchedules(from, to, distance, durationMinutes) {
   const routeKey = `${from}-${to}`;
   const activeDays = pickActiveDays(routeKey, distance);
 
-  WEEK_DAYS.forEach(day => {
+  WEEK_DAYS.forEach((day) => {
     if (!activeDays.includes(day)) {
       schedules[day] = [];
       return;
@@ -118,18 +109,14 @@ function generateSchedules(from, to, distance, durationMinutes) {
 
 function pickActiveDays(routeKey, distance) {
   const seed = stableHash(routeKey);
-  let minDays = 1;
-  let maxDays = 3;
+  let amountOfDays = 4;
 
   if (distance < 1000) {
-    minDays = 4;
-    maxDays = 7;
+    amountOfDays = 7;
   } else if (distance < 3000) {
-    minDays = 2;
-    maxDays = 5;
+    amountOfDays = pickNumberInRange(seed, 5, 6);
   }
 
-  const amountOfDays = pickNumberInRange(seed, minDays, maxDays);
   const dayOrder = rotateDeterministically(WEEK_DAYS, seed);
   return dayOrder.slice(0, amountOfDays);
 }
@@ -203,8 +190,4 @@ function rotateDeterministically(items, seed) {
   if (!items.length) return [];
   const pivot = seed % items.length;
   return [...items.slice(pivot), ...items.slice(0, pivot)];
-}
-
-export function randomBetween(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
 }

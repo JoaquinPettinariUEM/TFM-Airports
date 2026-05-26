@@ -21,7 +21,7 @@ export function getRoutes(req, res) {
 
   const routes = findRoutes(graph, from, to, airportMap, {
     budget: budget ? Number(budget) : Infinity,
-    minStops: 1,
+    minStops: 0,
     maxStops: maxStops ? Number(maxStops) : 4,
 
     startDate: startDate || new Date().toISOString(),

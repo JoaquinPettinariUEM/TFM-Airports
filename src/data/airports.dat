@@ -382,7 +382,7 @@ airportId,name,city,country,code,icao,lat,lon,alt,timezone,dst,tz,type,source
 1519,Cagliari Elmas Airport,Cagliari,Italy,CAG,LIEE,39.251499,9.05428,13,1,E,Europe/Rome,airport,OurAirports
 1509,Catania-Fontanarossa Airport,Catania,Italy,CTA,LICC,37.466801,15.0664,39,1,E,Europe/Rome,airport,OurAirports
 1512,Falcone–Borsellino Airport,Palermo,Italy,PMO,LICJ,38.175999,13.091,65,1,E,Europe/Rome,airport,OurAirports
-1529,Milano Linate Airport,Milan,Italy,LIN,LIML,45.445099,9.27674,353,1,E,Europe/Rome,airport,OurAirports
+1529,Milano Linate Airport,Milano,Italy,LIN,LIML,45.445099,9.27674,353,1,E,Europe/Rome,airport,OurAirports
 1563,Peretola Airport,Florence,Italy,FLR,LIRQ,43.810001,11.2051,142,1,E,Europe/Rome,airport,OurAirports
 1526,Turin Airport,Torino,Italy,TRN,LIMF,45.200802,7.64963,989,1,E,Europe/Rome,airport,OurAirports
 1551,Venice Marco Polo Airport,Venice,Italy,VCE,LIPZ,45.505299,12.3519,7,1,E,Europe/Rome,airport,OurAirports
