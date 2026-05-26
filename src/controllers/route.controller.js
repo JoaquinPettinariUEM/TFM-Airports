@@ -18,6 +18,7 @@ export function getRoutes(req, res) {
   const graph = getGraph();
 
   const airportMap = getAirportMap();
+  const startedAt = Date.now();
 
   const routes = findRoutes(graph, from, to, airportMap, {
     budget: budget ? Number(budget) : Infinity,
@@ -34,7 +35,10 @@ export function getRoutes(req, res) {
     maxStops: maxStops ? Number(maxStops) : 4,
   });
 
-  res.json(response);
+  res.json({
+    ...response,
+    elapsedMs: Date.now() - startedAt,
+  });
 }
 
 export async function getRouteDetails(req, res) {

@@ -14,8 +14,8 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
     budget: Infinity,
     minStops: 1,
     maxStops: 4,
-    maxResults: 20,
-    maxSearchMs: 10000,
+    maxResults: 2000,
+    maxSearchMs: 60000,
 
     startDate: new Date().toISOString(),
     tripDays: 7,
@@ -74,7 +74,7 @@ function dfs(graph, current, target, state, context) {
 
   const { results, options, airportMap, endDate, startedAt } = context;
 
-  if (Date.now() - startedAt > options.maxSearchMs) {
+  if (Number.isFinite(options.maxSearchMs) && Date.now() - startedAt > options.maxSearchMs) {
     return;
   }
 

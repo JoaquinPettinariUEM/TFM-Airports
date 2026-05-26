@@ -1,31 +1,38 @@
 export function buildRoutesResponse(routes, airportMap, options = {}) {
+  const FINAL_RESULTS_LIMIT = 20;
   const { budget = Infinity, maxStops = 4 } = options;
   const usedAirportIds = new Set();
 
   const normalizedRoutes = normalizeRoutes(routes, airportMap, usedAirportIds, getRouteBadge);
+  const uniqueByFirstHopRoutes = keepBestPerFirstHop(normalizedRoutes);
   const airports = buildAirportsMap(usedAirportIds, airportMap);
 
   const isBudgetFinite = Number.isFinite(budget);
   const recommendedPool = isBudgetFinite
-    ? normalizedRoutes.filter((route) => route.cost <= budget)
-    : normalizedRoutes;
+    ? uniqueByFirstHopRoutes.filter((route) => route.cost <= budget)
+    : uniqueByFirstHopRoutes;
   const expensivePool = isBudgetFinite
-    ? normalizedRoutes.filter((route) => route.cost > budget)
+    ? uniqueByFirstHopRoutes.filter((route) => route.cost > budget)
     : [];
 
   const prioritizedRecommended = prioritizeByStops(recommendedPool, maxStops);
-  const prioritizedAll = prioritizeByStops(normalizedRoutes, maxStops);
+  const prioritizedAll = prioritizeByStops(uniqueByFirstHopRoutes, maxStops);
   const prioritizedExpensive = prioritizeByStops(expensivePool, maxStops);
 
   const bestRoute = prioritizedRecommended[0] ?? prioritizedAll[0] ?? null;
   const rawRecommendedRoutes = bestRoute
     ? prioritizedRecommended.filter((route) => route.id !== bestRoute.id)
     : [];
-  const recommendedRoutes = rawRecommendedRoutes;
-  const moreExpensiveOptions = prioritizedExpensive.map((route, index) => ({
-    ...route,
-    badge: getExpensiveRouteBadge(index),
-  }));
+  const recommendedRoutes = rawRecommendedRoutes.slice(
+    0,
+    Math.max(0, FINAL_RESULTS_LIMIT - (bestRoute ? 1 : 0)),
+  );
+  const moreExpensiveOptions = prioritizedExpensive
+    .slice(0, FINAL_RESULTS_LIMIT)
+    .map((route, index) => ({
+      ...route,
+      badge: getExpensiveRouteBadge(index),
+    }));
 
   return {
     airports,
@@ -95,6 +102,31 @@ function getRouteBadge(index) {
   if (index === 1) return "Best Price";
   if (index === 2) return "Fastest";
   return "Smart Choice";
+}
+
+function keepBestPerFirstHop(routes) {
+  const bestByFirstHop = new Map();
+
+  routes.forEach((route) => {
+    const firstHop = route.path[1] ?? "__direct__";
+    const existing = bestByFirstHop.get(firstHop);
+
+    if (!existing) {
+      bestByFirstHop.set(firstHop, route);
+      return;
+    }
+
+    if (route.score < existing.score) {
+      bestByFirstHop.set(firstHop, route);
+      return;
+    }
+
+    if (route.score === existing.score && route.cost < existing.cost) {
+      bestByFirstHop.set(firstHop, route);
+    }
+  });
+
+  return [...bestByFirstHop.values()];
 }
 
 function prioritizeByStops(routes, maxStops) {
