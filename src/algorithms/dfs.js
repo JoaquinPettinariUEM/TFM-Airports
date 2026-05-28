@@ -10,6 +10,15 @@ import {
 } from "./extras.js";
 
 export function findRoutes(graph, start, target, airportMap, options = {}) {
+  const parsedTemplate = sanitizePathTemplate(
+    parsePathTemplate(options.pathTemplate, start, target),
+    graph,
+    start,
+    target,
+  );
+  const stayDaysByAirport = parseStayOverrides(options.via, options.stayDays);
+  const stayDaysTemplate = parseStayDaysTemplate(options.stayDaysTemplate);
+
   const config = {
     budget: Infinity,
     minStops: 1,
@@ -19,8 +28,10 @@ export function findRoutes(graph, start, target, airportMap, options = {}) {
 
     startDate: new Date().toISOString(),
     tripDays: 7,
-
     ...options,
+    pathTemplate: parsedTemplate,
+    stayDaysByAirport,
+    stayDaysTemplate,
   };
 
   const startDate = startOfDay(new Date(config.startDate));
@@ -98,6 +109,9 @@ function dfs(graph, current, target, state, context) {
 
   for (const edge of neighbors) {
     const next = edge.to;
+    const nextIndex = path.length;
+
+    if (!matchesTemplateAtIndex(options.pathTemplate, nextIndex, next)) continue;
 
     if (path.includes(next)) continue;
     if (isSameDestinationCityDifferentAirport(next, target, airportMap)) continue;
@@ -107,7 +121,11 @@ function dfs(graph, current, target, state, context) {
     for (const flight of availableFlights) {
       const arrivalDate = new Date(flight.departureDate.getTime() + flight.durationMinutes * 60000);
 
-      const stayDays = resolveStayDays(airportMap[next]?.recommendedStayDays);
+      const stayDays = resolveStayDays(
+        options.stayDaysTemplate?.[nextIndex] ??
+          options.stayDaysByAirport?.get(next) ??
+          airportMap[next]?.recommendedStayDays,
+      );
       const nextSearchDate =
         next === target
           ? startOfDay(arrivalDate)
@@ -214,8 +232,75 @@ function sortNeighbors(neighbors, current, target, airportMap) {
   return ranked.map((item) => item.edge);
 }
 
+function sanitizePathTemplate(template, graph, start, target) {
+  if (!Array.isArray(template) || !template.length) return template;
+
+  return template.map((token, index) => {
+    if (index === 0) return String(start).toUpperCase();
+    if (index === template.length - 1) return String(target).toUpperCase();
+    if (token === "?") return token;
+
+    const airportEdges = graph?.[token];
+    if (!Array.isArray(airportEdges) || airportEdges.length === 0) {
+      return "?";
+    }
+
+    return token;
+  });
+}
+
+function parsePathTemplate(pathTemplate, fallbackStart, fallbackTarget) {
+  if (!pathTemplate || typeof pathTemplate !== "string") return null;
+  const tokens = pathTemplate
+    .split("->")
+    .map((token) => String(token).trim().toUpperCase())
+    .filter(Boolean);
+
+  if (tokens.length < 2) return null;
+  if (tokens[0] !== String(fallbackStart).toUpperCase()) return null;
+  if (tokens[tokens.length - 1] !== String(fallbackTarget).toUpperCase()) return null;
+
+  return tokens;
+}
+
+function parseStayOverrides(viaRaw, stayDaysRaw) {
+  const map = new Map();
+  const via = String(viaRaw || "")
+    .split(",")
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean);
+  const stayDays = String(stayDaysRaw || "")
+    .split(",")
+    .map((value) => Number(value));
+
+  via.forEach((airportCode, index) => {
+    const parsedStay = Number(stayDays[index]);
+    if (!Number.isFinite(parsedStay)) return;
+    map.set(airportCode, Math.max(0, Math.min(6, Math.round(parsedStay))));
+  });
+
+  return map;
+}
+
+function matchesTemplateAtIndex(template, index, airportCode) {
+  if (!template || !Array.isArray(template)) return true;
+  if (index >= template.length) return false;
+  const token = template[index];
+  if (!token || token === "?") return true;
+  return token === String(airportCode).toUpperCase();
+}
+
+function parseStayDaysTemplate(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  const parsed = raw
+    .split(",")
+    .map((value) => Number(value))
+    .map((value) => (Number.isFinite(value) ? Math.max(0, Math.min(6, Math.round(value))) : null));
+  return parsed.length ? parsed : null;
+}
+
 function resolveStayDays(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 2;
-  return Math.max(1, Math.min(6, Math.round(parsed)));
+  return Math.max(0, Math.min(6, Math.round(parsed)));
 }

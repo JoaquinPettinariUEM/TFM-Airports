@@ -1,10 +1,13 @@
 export function buildRoutesResponse(routes, airportMap, options = {}) {
   const FINAL_RESULTS_LIMIT = 20;
-  const { budget = Infinity, maxStops = 4 } = options;
+  const { budget = Infinity, maxStops = 4, pathTemplate = "" } = options;
   const usedAirportIds = new Set();
 
   const normalizedRoutes = normalizeRoutes(routes, airportMap, usedAirportIds, getRouteBadge);
-  const uniqueByFirstHopRoutes = keepBestPerFirstHop(normalizedRoutes);
+  const shouldKeepFirstHopDedupe = !hasFixedIntermediateInTemplate(pathTemplate);
+  const uniqueByFirstHopRoutes = shouldKeepFirstHopDedupe
+    ? keepBestPerFirstHop(normalizedRoutes)
+    : normalizedRoutes;
   const airports = buildAirportsMap(usedAirportIds, airportMap);
 
   const isBudgetFinite = Number.isFinite(budget);
@@ -36,11 +39,24 @@ export function buildRoutesResponse(routes, airportMap, options = {}) {
 
   return {
     airports,
-    routes,
     bestRoute,
     recommendedRoutes,
     moreExpensiveOptions,
   };
+}
+
+function hasFixedIntermediateInTemplate(pathTemplate) {
+  if (typeof pathTemplate !== "string" || !pathTemplate.trim()) return false;
+
+  const tokens = pathTemplate
+    .split("->")
+    .map((token) => token.trim().toUpperCase())
+    .filter(Boolean);
+
+  if (tokens.length < 3) return false;
+
+  const middleTokens = tokens.slice(1, -1);
+  return middleTokens.some((token) => token !== "?");
 }
 
 function normalizeRoutes(routes, airportMap, usedAirportIds, badgeResolver) {

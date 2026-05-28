@@ -7,7 +7,18 @@ import { buildRoutesResponse } from "../utils/enrichRoutes.js";
 import { normalizeCity } from "../utils/normalizeCity.js";
 
 export function getRoutes(req, res) {
-  const { from, to, budget, maxStops, startDate, tripDays } = req.query;
+  const {
+    from,
+    to,
+    budget,
+    maxStops,
+    startDate,
+    tripDays,
+    pathTemplate,
+    via,
+    stayDays,
+    stayDaysTemplate,
+  } = req.query;
 
   if (!from || !to) {
     return res.status(400).json({
@@ -20,19 +31,42 @@ export function getRoutes(req, res) {
   const airportMap = getAirportMap();
   const startedAt = Date.now();
 
+  const parsedTemplate =
+    typeof pathTemplate === "string"
+      ? pathTemplate
+          .split("->")
+          .map((token) => token.trim())
+          .filter(Boolean)
+      : null;
+
+  const derivedStopsFromTemplate =
+    Array.isArray(parsedTemplate) && parsedTemplate.length >= 2 ? parsedTemplate.length - 2 : null;
+
+  const effectiveMaxStops =
+    typeof derivedStopsFromTemplate === "number"
+      ? derivedStopsFromTemplate
+      : maxStops
+        ? Number(maxStops)
+        : 4;
+
   const routes = findRoutes(graph, from, to, airportMap, {
     budget: budget ? Number(budget) : Infinity,
     minStops: 0,
-    maxStops: maxStops ? Number(maxStops) : 4,
+    maxStops: effectiveMaxStops,
 
     startDate: startDate || new Date().toISOString(),
 
     tripDays: tripDays ? Number(tripDays) : 7,
+    pathTemplate: typeof pathTemplate === "string" ? pathTemplate : undefined,
+    via: typeof via === "string" ? via : "",
+    stayDays: typeof stayDays === "string" ? stayDays : "",
+    stayDaysTemplate: typeof stayDaysTemplate === "string" ? stayDaysTemplate : "",
   });
 
   const response = buildRoutesResponse(routes, airportMap, {
     budget: budget ? Number(budget) : Infinity,
-    maxStops: maxStops ? Number(maxStops) : 4,
+    maxStops: effectiveMaxStops,
+    pathTemplate: typeof pathTemplate === "string" ? pathTemplate : "",
   });
 
   res.json({

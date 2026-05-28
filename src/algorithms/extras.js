@@ -6,6 +6,9 @@ export function canContinue(state, options, results) {
   const { path } = state;
 
   const { maxStops } = options;
+  const templateLength = Array.isArray(options?.pathTemplate) ? options.pathTemplate.length : null;
+
+  if (templateLength && path.length > templateLength) return false;
 
   // path = airports visited. Flights = path.length - 1. Stops = flights - 1.
   // Therefore, max flights allowed = maxStops + 1 => path.length <= maxStops + 2.
@@ -16,6 +19,10 @@ export function canContinue(state, options, results) {
 
 export function isSolution(current, target, state, options, context = {}) {
   if (current !== target || state.path.length <= 1) {
+    return false;
+  }
+
+  if (Array.isArray(options?.pathTemplate) && state.path.length !== options.pathTemplate.length) {
     return false;
   }
 
@@ -33,7 +40,15 @@ export function isSolution(current, target, state, options, context = {}) {
     return true;
   }
 
-  const finalStayDays = normalizeStayDays(targetAirport.recommendedStayDays);
+  const templateFinalStay =
+    Array.isArray(options?.stayDaysTemplate) && options.stayDaysTemplate.length
+      ? options.stayDaysTemplate[options.stayDaysTemplate.length - 1]
+      : null;
+  const finalStayDays = normalizeStayDays(
+    templateFinalStay ??
+      options?.stayDaysByAirport?.get?.(target) ??
+      targetAirport.recommendedStayDays,
+  );
   const arrivalDate = new Date(lastFlight.arrivalDate);
   const completionDate = addDays(arrivalDate, finalStayDays);
 
@@ -154,5 +169,5 @@ export function buildFlightDate(baseDate, time) {
 function normalizeStayDays(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 2;
-  return Math.max(1, Math.min(6, Math.round(parsed)));
+  return Math.max(0, Math.min(6, Math.round(parsed)));
 }
