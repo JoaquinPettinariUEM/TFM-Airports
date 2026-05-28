@@ -1,5 +1,6 @@
 export function buildRoutesResponse(routes, airportMap, options = {}) {
   const FINAL_RESULTS_LIMIT = 20;
+  const EXPENSIVE_RESULTS_LIMIT = 8;
   const { budget = Infinity, maxStops = 4, pathTemplate = "" } = options;
   const usedAirportIds = new Set();
 
@@ -31,7 +32,7 @@ export function buildRoutesResponse(routes, airportMap, options = {}) {
     Math.max(0, FINAL_RESULTS_LIMIT - (bestRoute ? 1 : 0)),
   );
   const moreExpensiveOptions = prioritizedExpensive
-    .slice(0, FINAL_RESULTS_LIMIT)
+    .slice(0, EXPENSIVE_RESULTS_LIMIT)
     .map((route, index) => ({
       ...route,
       badge: getExpensiveRouteBadge(index),
