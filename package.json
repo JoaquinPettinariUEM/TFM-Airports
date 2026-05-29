@@ -21,7 +21,8 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.5.0"
+    "mongoose": "^9.5.0",
+    "redis": "^5.10.0"
   },
   "devDependencies": {
     "husky": "^9.1.7",

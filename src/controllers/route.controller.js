@@ -6,6 +6,11 @@ import { getGraph, getAirportMap } from "../services/graph.js";
 import { buildRoutesResponse } from "../utils/enrichRoutes.js";
 import { normalizeCity } from "../utils/normalizeCity.js";
 import { MOCK_SUGGESTED_ROUTES } from "../mocks/popularRoutes.mock.js";
+import { getRedisClient } from "../services/redis.js";
+import { randomBytes } from "node:crypto";
+
+const SHARE_TTL_SECONDS = Number(process.env.SHARE_TTL_SECONDS || 60 * 60 * 24);
+const SHARE_KEY_PREFIX = "shared-route:";
 
 export function getRoutes(req, res) {
   const {
@@ -99,6 +104,71 @@ export function getPopularRoutes(req, res) {
     airports,
     popularRoutes: MOCK_SUGGESTED_ROUTES,
   });
+}
+
+export async function createSharedRoute(req, res) {
+  try {
+    const { route, budget, requestedMaxStops } = req.body ?? {};
+
+    if (!route || !Array.isArray(route.path) || !Array.isArray(route.flights)) {
+      return res.status(400).json({
+        error: "Invalid route payload",
+      });
+    }
+
+    const redis = await getRedisClient();
+    const shareId = randomBytes(8).toString("base64url");
+    const shareKey = `${SHARE_KEY_PREFIX}${shareId}`;
+
+    const sharedPayload = {
+      route,
+      budget: Number.isFinite(Number(budget)) ? Number(budget) : undefined,
+      requestedMaxStops: Number.isFinite(Number(requestedMaxStops))
+        ? Number(requestedMaxStops)
+        : undefined,
+      createdAt: new Date().toISOString(),
+      expiresInSeconds: SHARE_TTL_SECONDS,
+    };
+
+    await redis.setEx(shareKey, SHARE_TTL_SECONDS, JSON.stringify(sharedPayload));
+
+    return res.json({
+      shareId,
+      expiresInSeconds: SHARE_TTL_SECONDS,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      error: "Could not create shared route",
+    });
+  }
+}
+
+export async function getSharedRoute(req, res) {
+  try {
+    const { shareId } = req.params;
+    if (!shareId) {
+      return res.status(400).json({
+        error: "shareId is required",
+      });
+    }
+
+    const redis = await getRedisClient();
+    const sharedRaw = await redis.get(`${SHARE_KEY_PREFIX}${shareId}`);
+
+    if (!sharedRaw) {
+      return res.status(404).json({
+        error: "Shared route not found or expired",
+      });
+    }
+
+    return res.json(JSON.parse(sharedRaw));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      error: "Could not fetch shared route",
+    });
+  }
 }
 
 export async function getRouteDetails(req, res) {
