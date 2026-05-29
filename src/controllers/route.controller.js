@@ -5,6 +5,7 @@ import { findRoutes } from "../algorithms/dfs.js";
 import { getGraph, getAirportMap } from "../services/graph.js";
 import { buildRoutesResponse } from "../utils/enrichRoutes.js";
 import { normalizeCity } from "../utils/normalizeCity.js";
+import { MOCK_SUGGESTED_ROUTES } from "../mocks/popularRoutes.mock.js";
 
 export function getRoutes(req, res) {
   const {
@@ -68,10 +69,35 @@ export function getRoutes(req, res) {
     maxStops: effectiveMaxStops,
     pathTemplate: typeof pathTemplate === "string" ? pathTemplate : "",
   });
+  const notFoundCities = inferNotFoundCities(pathTemplate, graph, from, to);
 
   res.json({
     ...response,
+    notFoundCities,
     elapsedMs: Date.now() - startedAt,
+  });
+}
+
+export function getPopularRoutes(req, res) {
+  const airportMap = getAirportMap();
+  const usedAirportIds = new Set(MOCK_SUGGESTED_ROUTES.flatMap((route) => route.path));
+  const airports = {};
+
+  usedAirportIds.forEach((id) => {
+    const airport = airportMap[id];
+    if (!airport) return;
+    airports[id] = {
+      _id: airport._id,
+      name: airport.name,
+      city: airport.city,
+      country: airport.country,
+      location: airport.location,
+    };
+  });
+
+  return res.json({
+    airports,
+    popularRoutes: MOCK_SUGGESTED_ROUTES,
   });
 }
 
@@ -177,6 +203,28 @@ export async function getRouteDetails(req, res) {
       error: "Internal server error",
     });
   }
+}
+
+function inferNotFoundCities(pathTemplate, graph, from, to) {
+  if (typeof pathTemplate !== "string" || !pathTemplate.trim()) return [];
+
+  const start = String(from || "").toUpperCase();
+  const target = String(to || "").toUpperCase();
+
+  const tokens = pathTemplate
+    .split("->")
+    .map((token) => token.trim().toUpperCase())
+    .filter(Boolean);
+
+  if (!tokens.length) return [];
+
+  return tokens.filter((token, index) => {
+    if (index === 0 || index === tokens.length - 1) return false;
+    if (token === "?" || token === start || token === target) return false;
+
+    const edges = graph?.[token];
+    return !Array.isArray(edges) || edges.length === 0;
+  });
 }
 
 async function withImageFallback(cityData, cityInfo, req) {
