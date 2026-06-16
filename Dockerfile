@@ -2,11 +2,15 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci
+ENV NODE_ENV=production
 
-COPY . .
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --chown=node:node . .
+
+USER node
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "start"]

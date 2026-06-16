@@ -7,15 +7,24 @@ import cors from "cors";
 import path from "node:path";
 
 const app = express();
-app.use(cors());
 
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-  }),
-);
+const corsOrigin = process.env.CORS_ORIGIN || "*";
+
+app.use(cors({ origin: corsOrigin }));
 
 app.use(express.json());
+
+app.get("/", (_req, res) => {
+  res.json({
+    service: "TFM Airports API",
+    status: "ok",
+  });
+});
+
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 app.use("/cities", express.static(path.resolve("public/cities")));
 app.use("/routes", routes);
 app.use("/itineraries", itineraries);
